@@ -1,2 +1,0 @@
-D:\Game_Server\IOCP 공부용\Debug\IOCP 공부용.exe
-D:\Game_Server\IOCP 공부용\Debug\IOCP 공부용.pdb
