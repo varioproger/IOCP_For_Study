@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="TEST_0">
+      <UniqueIdentifier>{9f675b5a-64f4-4b4e-8519-b1276b137ff4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="1_IOCP 기본 설명.h">
+      <Filter>헤더 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="IOCP_Thread_Pool.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="GetQueuedCompletionStatusEx.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="PostQueuedCompletionStatus.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="WSAAsyncSelect.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="WSAEventSelect.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="WSAEventSelect_Upgrade.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrApc.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrIocp.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrIocpEvtSel.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sever.cpp">
+      <Filter>TEST_0</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrEx.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrEx_2.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrExSig.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrExIocp.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="QueueUserWorkItem.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="TP_IO _0.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="TP_IO _1.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="InterLock.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="TP_IO _2.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="4_ICOP_ThreadPool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="5_입출력과 상관없는 IOCP의 사용.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="6_IOCP의 구성요소.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="7_IOCP의 기본적인 움직임.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="2_OVERLAPPED 구조체 설명.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="3_IOCP 사용 절차.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="8_IOCP 확장 함수.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="7.5_QueueUserAPC.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="9_윈도우 메시지%28WSAAsyncSelect%29.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="10_이벤트 시그널링%28WSAEventSelect%29.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="11_WSA_SOCKET,SEND,RECV.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="10.5_WSAGetOverlappedResult.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="12_경보가능 입출력의 사용.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="11.5_WaitForMultipleObjects.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="13_EchoSvrIocp.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="14_SeverIOCP 와 WSAEventSelect의 결합.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="15_WSAIoctl.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="16.AcceptEx.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="17_GetAcceptExSockaddrs.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="18_AcceptEx를 이용한 소켓 배열.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="19_ConnectEx.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="20_DisconnectEx.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="21_스레드 풀의 의미와 구현.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="22_작업(QueueUserWorkItem).h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="23_새로운 스레드 풀 I %28TP_%29객체.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="24_CreateThreadpoolXxx.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="25_ PTP_XXX_CALLBACK.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="26_객체를 스레드 풀에 추가.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="27_콜백 함수 실행 완료 대기.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="28_작업 항목 객체의 해제.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="29_TP _IO 객체의 생성과 삭제.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="30_입출력 개시와 취소.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="31_콜백 함수 실행 완료 대기.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="32_입출력 취소와 주의사항.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
