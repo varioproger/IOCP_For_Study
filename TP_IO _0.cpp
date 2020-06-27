@@ -57,8 +57,7 @@ void _tmain()
 		printf("before\n");
 		WaitForThreadpoolIoCallbacks(ptpIo, FALSE);
 		/*
-		BindIoCompletionCallback 사용 예에서는 입출력 완료를 기다리기 위해 이벤트 커널 객체를 통해 WaitForXXX 함수를 호출했지만,
-		TP_IO 객체를 사용할 경우에는 WaitForThreadpoolIoCallbacks 함수를 이용하면 된다.
+		입출력 완료를 기다리기 위해 TP_IO 객체를 사용할 경우에는 WaitForThreadpoolIoCallbacks 함수를 이용하면 된다.
 		*/
 		printf("After\n");
 		llSize.QuadPart -= ov.InternalHigh;

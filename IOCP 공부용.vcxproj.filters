@@ -69,13 +69,22 @@
     <ClCompile Include="TP_IO _0.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="TP_IO _1.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="InterLock.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="TP_IO _2.cpp">
+    <ClCompile Include="TPoolWorkVista.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrTPWork.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EchoSvrTPWorkSimple.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="TPoolWaitVista.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="TP_IO _1.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -170,16 +179,40 @@
     <ClInclude Include="28_작업 항목 객체의 해제.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="29_TP _IO 객체의 생성과 삭제.h">
+    <ClInclude Include="29_ 작업%28TP_WORK%29 객체.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="30_입출력 개시와 취소.h">
+    <ClInclude Include="30_작업의 등록.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="31_콜백 함수 실행 완료 대기.h">
+    <ClInclude Include="31_TrySubmitThreadpoolCallback.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="32_입출력 취소와 주의사항.h">
+    <ClInclude Include="32_대기%28TP_WAIT%29 객체.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="33_TP _IO 객체의 생성과 삭제.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="34_입출력 개시와 취소.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="35_콜백 함수 실행 완료 대기.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="36_입출력 취소와 주의사항.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="37_새로운 스레드 풀 II.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="38_StackInformation.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="39_ 콜백 환경 객체.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="40_PTP_POOL Pool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

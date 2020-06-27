@@ -29,8 +29,8 @@ BOOL  fCancelPendingCallbacks
   ●   입출력 : StartThreadpoolIo
 
 위 함수들을 이용해 TP_XXX 객체에 대해 콜백 항목 A, B, C를 추가했다고 하자.
-그리고 실행될 조건(시그널 상태 또는 입출력 완료 등)이 만족되어 스레드 풀이 큐에 존재하는 A는 실행 중이고 
-B, C는 여전히 큐에 남아 있는 상태라고 하자. 이 상태에서 여러분은 프로그램 종료를 위해서 WaitForThreadpoolXxxCallbacks을 호출했다고 하자. 
+그리고 실행될 조건(시그널 상태 또는 입출력 완료 등)이 만족되어 스레드 풀이 큐에 존재하는 A는 실행 중이고 B, C는 여전히 큐에 남아 있는 상태라고 하자. 
+이 상태에서 여러분은 프로그램 종료를 위해서 WaitForThreadpoolXxxCallbacks을 호출했다고 하자. 
 그러면 WaitForThread-poolXxxCallbacks 호출 시 fCancelPendingCallbacks 매개변수를 TRUE로 넘겨주면 
 이 함수는 현재 실행 중인 콜백 함수 A의 실행이 완료되기를 기다리다 A가 완료되면 큐에 남아 있던 B,C를 실행하지 않고 
 그 항목을 제거한 후 리턴된다. 만약 fCancelPendingCallbacks 매개변수를 FALSE로 넘겨주면 현재 실행 중인 A의 실행 완료뿐만 아니라 

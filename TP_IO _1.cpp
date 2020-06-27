@@ -1,199 +1,264 @@
+#pragma comment(lib, "Ws2_32.lib")
 #include<tchar.h>
-#include "windows.h"
-#include "Ntsecapi.h"
+#include "Winsock2.h"
+#include "Mswsock.h"
+#include "set"
 #include "iostream"
 using namespace std;
 
 
-#define BUFF_SIZE	65536
-
-struct COPY_CHUNCK : OVERLAPPED
+PVOID GetSockExtAPI(SOCKET sock, GUID guidFn)
 {
-	HANDLE	_hfSrc, _hfDst;
-	PTP_IO	_ioSrc, _ioDst;// 소스와 타깃 핸들 각각에 대한 PTP_IO 필드
-	BYTE	_arBuff[BUFF_SIZE];
+	PVOID pfnEx = NULL;
+	GUID guid = guidFn;
+	DWORD dwBytes = 0;
+	LONG lRet = WSAIoctl
+	(
+		sock, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guid, sizeof(guid), &pfnEx,
+		sizeof(pfnEx), &dwBytes, NULL, NULL
+	);
+	if (lRet == SOCKET_ERROR)
+	{
+		cout << "WSAIoctl failed, code : " << WSAGetLastError() << endl;
+		return NULL;
+	}
+	return pfnEx;
+}
 
-	COPY_CHUNCK(HANDLE hfSrc, HANDLE hfDst)
+SOCKET GetListenSocket(short shPortNo, int nBacklog = SOMAXCONN)
+{
+	SOCKET hsoListen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (hsoListen == INVALID_SOCKET)
+	{
+		cout << "socket failed, code : " << WSAGetLastError() << endl;
+		return INVALID_SOCKET;
+	}
+
+	SOCKADDR_IN	sa;
+	memset(&sa, 0, sizeof(SOCKADDR_IN));
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(shPortNo);
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	LONG lSockRet = bind(hsoListen, (PSOCKADDR)&sa, sizeof(SOCKADDR_IN));
+	if (lSockRet == SOCKET_ERROR)
+	{
+		cout << "bind failed, code : " << WSAGetLastError() << endl;
+		closesocket(hsoListen);
+		return INVALID_SOCKET;
+	}
+
+	lSockRet = listen(hsoListen, nBacklog);
+	if (lSockRet == SOCKET_ERROR)
+	{
+		cout << "listen failed, code : " << WSAGetLastError() << endl;
+		closesocket(hsoListen);
+		return INVALID_SOCKET;
+	}
+
+	return hsoListen;
+}
+
+
+struct SOCK_ITEM : OVERLAPPED
+{
+	SOCKET	_sock;
+	PTP_IO	_ptpIo; //// 자식 소켓과 연결될 TP_IO 객체의 포인터 필드
+	char	_buff[512];
+
+	SOCK_ITEM(SOCKET sock)
 	{
 		memset(this, 0, sizeof(*this));
-		_hfSrc = hfSrc, _hfDst = hfDst;
+		_sock = sock;
 	}
 };
-typedef COPY_CHUNCK* PCOPY_CHUNCK;
+typedef SOCK_ITEM* PSOCK_ITEM;
+typedef std::set<PSOCK_ITEM> SOCK_SET;
 
-struct COPY_ENV
+struct IOCP_ENV
 {
-	LONG	_nCpCnt;
-	HANDLE	_hevEnd;
+	CRITICAL_SECTION _cs;
+	SOCK_SET	_conn;
+	SOCKET   _listen;   // 리슨 소켓 핸들
+	WSAEVENT  _event;   // 접속 요청을 통지받을 리슨 소켓과 연결된 이벤트
 };
-typedef COPY_ENV* PCOPY_ENV;
+typedef IOCP_ENV* PIOCP_ENV;
 
-VOID CALLBACK ReadCompleted(PTP_CALLBACK_INSTANCE pInst,
-	PVOID pCtx, PVOID pOL, ULONG dwErrCode, ULONG_PTR dwTrBytes, PTP_IO pio)
+
+
+void WINAPI Handler_SockChild(PTP_CALLBACK_INSTANCE pInst,
+	PVOID pCtx, PVOID pov, ULONG dwErrCode, ULONG_PTR dwTrBytes, PTP_IO ptpIo)
 {
-	PCOPY_ENV	 pce = (PCOPY_ENV)pCtx;
-	PCOPY_CHUNCK pcc = (PCOPY_CHUNCK)pOL;
-	DWORD	     dwThrId = GetCurrentThreadId();
-	BOOL bIsOK = false;
-	if (dwErrCode != 0)
-		goto $LABEL_CLOSE;
+	PIOCP_ENV  pie = (PIOCP_ENV)pCtx;
+	PSOCK_ITEM psi = (PSOCK_ITEM)pov;
 
-	/*
-	읽기 완료 처리 후에는 비동기 쓰기 WriteFile을 호출해야 하며, 호출하기 전에 StartThreadpoolIo 함수를 호출해야 한다. 
-	주의할 것은 WriteFile이 타깃 파일을 대상으로 하기 때문에 StartThreadpoolIo 역시 
-	타깃 파일과 연계된 _ioDst TP_IO 객체여야 한다는 점 이다.
-	*/
-	printf(" => Thr %d Read bytes : %d\n", dwThrId, pcc->Offset);
-	StartThreadpoolIo(pcc->_ioDst);// write과 관련된 변수 사용
-	bIsOK = WriteFile(pcc->_hfDst, pcc->_arBuff, dwTrBytes, NULL, pcc);
-	if (!bIsOK)
-	{
-		dwErrCode = GetLastError();
-		if (dwErrCode != ERROR_IO_PENDING)
+	if (dwTrBytes > 0 && dwErrCode == NO_ERROR)
+	{//전송 바이트 수가 0보다 크고 에러가 없는 경우, 데이터 수신 처리를 한다.
+		if ((int)dwTrBytes > 0)
 		{
-			CancelThreadpoolIo(pcc->_ioDst);
-			goto $LABEL_CLOSE;
-		}
-	}
-	return;
+			/*
+			형 변환 결과, 전송 바이트가 양수인 경우에는 에코 처리를 수행한다.
+			접속 수용 콜백에서 WSARecv 최초 호출을 위해 이 콜백 함수를 의도적으로 호출하기 때문에 음수인 경우에는
+			에코 처리를 건너뛰어야 한다.
+			*/
+			psi->_buff[dwTrBytes] = 0;
+			cout << " *** Client(" << psi->_sock << ") sent : " << psi->_buff << endl;
 
-$LABEL_CLOSE:
-	if (dwErrCode == ERROR_HANDLE_EOF)
-		printf(" ****** Thr %d copy successfully completed...\n", dwThrId);
-	else
-		printf(" ###### Thr %d copy failed, code : %d\n", dwThrId, dwErrCode);
-	CloseHandle(pcc->_hfSrc);
-	CloseHandle(pcc->_hfDst);
-	if (InterlockedDecrement(&pce->_nCpCnt) == 0)
-		SetEvent(pce->_hevEnd);
-}
-
-VOID CALLBACK WriteCompleted(PTP_CALLBACK_INSTANCE pInst,
-	PVOID pCtx, PVOID pOL, ULONG dwErrCode, ULONG_PTR dwTrBytes, PTP_IO pio)
-{
-	PCOPY_ENV	 pce = (PCOPY_ENV)pCtx;
-	PCOPY_CHUNCK pcc = (PCOPY_CHUNCK)pOL;
-	DWORD	     dwThrId = GetCurrentThreadId();
-	BOOL bIsOK = false;
-	if (dwErrCode != 0)
-		goto $LABEL_CLOSE;
-
-	pcc->Offset += dwTrBytes;
-	printf(" <= Thr %d Wrote bytes : %d\n", dwThrId, pcc->Offset);
-
-	StartThreadpoolIo(pcc->_ioSrc);//// read과 관련된 변수 사용
-	bIsOK = ReadFile(pcc->_hfSrc, pcc->_arBuff, BUFF_SIZE, NULL, pcc);
-	if (!bIsOK)
-	{
-		dwErrCode = GetLastError();
-		if (dwErrCode != ERROR_IO_PENDING)
-		{
-			CancelThreadpoolIo(pcc->_ioSrc);
-			goto $LABEL_CLOSE;
-		}
-	}
-	return;
-
-$LABEL_CLOSE:
-	if (dwErrCode == ERROR_HANDLE_EOF)
-		printf(" ****** Thr %d copy successfully completed...\n", dwThrId);
-	else
-		printf(" ###### Thr %d copy failed, code : %d\n", dwThrId, dwErrCode);
-	CloseHandle(pcc->_hfSrc);
-	CloseHandle(pcc->_hfDst);
-	if (InterlockedDecrement(&pce->_nCpCnt) == 0)//INTERLOCK.cpp 참조
-		SetEvent(pce->_hevEnd);
-}
-
-
-#define MAX_COPY_CNT  10
-void _tmain(int argc, _TCHAR* argv[])
-{
-	if (argc < 2)
-	{
-		cout << "Uasge : MultiCopyBICC SourceFile1 SourceFile2 SourceFile3 ..." << endl;
-		return;
-	}
-	if (argc > MAX_COPY_CNT + 1)
-		argc = MAX_COPY_CNT + 1;
-
-	PCOPY_CHUNCK arChunk[MAX_COPY_CNT];
-	memset(arChunk, 0, sizeof(PCOPY_CHUNCK) * MAX_COPY_CNT);
-
-	COPY_ENV env;
-	env._nCpCnt = 0;
-	env._hevEnd = CreateEvent(NULL, TRUE, FALSE, NULL);
-
-	for (int i = 1; i < argc; i++)
-	{
-		TCHAR* pszSrcFile = argv[i];
-		HANDLE hSrcFile = CreateFile
-		(
-			pszSrcFile, GENERIC_READ, 0, NULL,
-			OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL
-		);
-		if (hSrcFile == INVALID_HANDLE_VALUE)
-		{
-			cout << pszSrcFile << " open failed, code : " << GetLastError() << endl;
-			return;
-		}
-
-		TCHAR szDstFile[MAX_PATH];
-		_tcscpy(szDstFile, pszSrcFile);
-		_tcscat(szDstFile, _T(".copied"));
-		HANDLE hDstFile = CreateFile
-		(
-			szDstFile, GENERIC_WRITE, 0, NULL,
-			CREATE_ALWAYS, FILE_FLAG_OVERLAPPED, NULL
-		);
-		if (hDstFile == INVALID_HANDLE_VALUE)
-		{
-			cout << szDstFile << " open failed, code : " << GetLastError() << endl;
-			return;
-		}
-
-		PCOPY_CHUNCK pcc = new COPY_CHUNCK(hSrcFile, hDstFile);
-		pcc->_ioSrc = CreateThreadpoolIo(hSrcFile, ReadCompleted, &env, NULL);
-		pcc->_ioDst = CreateThreadpoolIo(hDstFile, WriteCompleted, &env, NULL);
-		/*
-		소스 파일과 타깃 파일에 대해 각각의 TP_IO 객체를 생성한다. 
-		각각의 콜백 함수와 함께 COPY_ENV 구조체에 대한 참조 포인터를 별도로 전달한다.
-		*/
-		arChunk[i - 1] = pcc;
-		env._nCpCnt++;
-	}
-
-	for (int i = 0; i < env._nCpCnt; i++)
-	{
-		PCOPY_CHUNCK pcc = arChunk[i];
-		StartThreadpoolIo(pcc->_ioSrc);//비동기 읽기 ReadFile 함수를 호출하기 전에 StartThreadpoolIo를 호출해줘야 한다.
-		BOOL bIsOK = ReadFile
-		(
-			pcc->_hfSrc, pcc->_arBuff, BUFF_SIZE, NULL, pcc
-		);
-		if (!bIsOK)
-		{
-			DWORD dwErrCode = GetLastError();
-			if (dwErrCode != ERROR_IO_PENDING)
-			{//에러 코드가 ERROR_IO_PENDING이 아닐 경우에는 CancelThreadpoolIo 함수를 호출해야 한다.
-				CancelThreadpoolIo(pcc->_ioSrc);
-				break;
+			int lSockRet = send(psi->_sock, psi->_buff, dwTrBytes, 0);
+			if (lSockRet == SOCKET_ERROR)
+			{
+				dwErrCode = WSAGetLastError();
+				goto $LABEL_CLOSE;
 			}
 		}
+
+		StartThreadpoolIo(ptpIo);
+		WSABUF wb; DWORD dwFlags = 0;
+		wb.buf = psi->_buff, wb.len = sizeof(psi->_buff);
+		int nSockRet = WSARecv(psi->_sock, &wb, 1, NULL, &dwFlags, psi, NULL);
+		//먼저 StartThreadpoolIo를 호출한 후 WSARecv를 비동기적으로 호출한다.
+		if (nSockRet == SOCKET_ERROR)
+		{
+			dwErrCode = WSAGetLastError();
+			if (dwErrCode != WSA_IO_PENDING)
+			{
+				CancelThreadpoolIo(ptpIo);
+				//에러가 발생했을 경우 CancelThreadpoolIo를 호출한다.
+				goto $LABEL_CLOSE;
+			}
+		}
+		return;
 	}
 
-	WaitForSingleObject(env._hevEnd, INFINITE);
-	for (int i = 0; i < env._nCpCnt; i++)
+$LABEL_CLOSE:
+	if (dwErrCode == ERROR_OPERATION_ABORTED)
+		return;
+	/*
+	ERROR_OPERATION_ABORTED는 프로그램 종료를 위해 CancelIoEx를 호출한 경우고,
+	자식 소켓 관련 리소스는 메인 스레드에 서 해제하기 때문에 바로 리턴한다.
+	*/
+	if (dwErrCode == ERROR_SUCCESS || dwErrCode == ERROR_NETNAME_DELETED)
+		cout << " ==> Client " << psi->_sock << " disconnected..." << endl;
+	else
+		cout << " ==> Error occurred, code = " << dwErrCode << endl;
+	EnterCriticalSection(&pie->_cs);
+	pie->_conn.erase(psi);
+	LeaveCriticalSection(&pie->_cs);
+
+	closesocket(psi->_sock);
+	delete psi;
+	CloseThreadpoolIo(ptpIo);
+	/*
+	자식 소켓 관련 리소스를 해제하고 TP_IO 객체를 해제한다.
+	이 콜백 함수 내에서 CloseThreadpoolIo를 호출할 수 있는 근거는 코드 상에서 중첩 입출력을 발생시키지 않았기에
+	현재 실행 중인 콜백은 본 콜백 함수밖에 없기 때문이다.
+	*/
+}
+
+VOID WINAPI Handler_SockListen(PTP_CALLBACK_INSTANCE pInst, PVOID pCtx, PTP_WAIT ptpWait, TP_WAIT_RESULT)
+{
+	PIOCP_ENV pie = (PIOCP_ENV)pCtx;
+	//IOCP_ENV 인스턴스를 획득한다.
+	WSANETWORKEVENTS ne;
+	WSAEnumNetworkEvents(pie->_listen, pie->_event, &ne);
+	if (!(ne.lNetworkEvents & FD_ACCEPT))
+		return;
+
+	int nErrCode = ne.iErrorCode[FD_ACCEPT_BIT];
+	if (nErrCode != 0)
 	{
-		PCOPY_CHUNCK pcc = arChunk[i];
-		CloseThreadpoolIo(pcc->_ioSrc);
-		CloseThreadpoolIo(pcc->_ioDst);
-		/*
-		소스와 타깃 파일에 대해 생성한 각각의 TP_IO 객체를 해제한다. 
-		env._hevEnd 이벤트 객체를 통해 모든 파일의 복사가 완료될 때까지 직접 대기하기 때문에, 
-		본 코드에서는 굳이 개별 복사 항목에 대해 WaitForThreadpoolIoCallbacks 함수를 호출할 필요는 없다.
-		*/
-		delete pcc;
+		cout << " ==> Listen failed, code = " << nErrCode << endl;
+		return;
 	}
-	CloseHandle(env._hevEnd);
+
+	SOCKET sock = accept(pie->_listen, NULL, NULL);
+	if (sock == INVALID_SOCKET)
+	{
+		nErrCode = WSAGetLastError();
+		if (nErrCode != WSAEINTR)
+			cout << " ==> Listen failed, code = " << nErrCode << endl;
+		return;
+	}
+	cout << " ==> New client " << sock << " connected..." << endl;
+
+	PSOCK_ITEM psi = new SOCK_ITEM(sock);
+	psi->_ptpIo = CreateThreadpoolIo((HANDLE)psi->_sock, Handler_SockChild, pie, NULL);
+	//TP_IO 객체를 생성하고 접속이 수용된 자식 소켓과 연결한다. 컨텍스트 매개변수로 IOCP_ENV 구조체의 포인터를 전달한다.
+	EnterCriticalSection(&pie->_cs);
+	pie->_conn.insert(psi);
+	LeaveCriticalSection(&pie->_cs);
+
+	Handler_SockChild(pInst, pie, psi, NO_ERROR, -1, psi->_ptpIo);
+	//데이터 수신 개시를 위해 TP_IO용 콜백 함수를 직접 호출한다.
+	SetThreadpoolWait(ptpWait, pie->_event, NULL);
+	//리슨용 이벤트의 시그널을 계속 받기 위해 SetThreadpoolWait를 호출한다.
+}
+
+
+void _tmain()
+{
+	WSADATA	wsd;
+	int nInitCode = WSAStartup(MAKEWORD(2, 2), &wsd);
+	if (nInitCode)
+	{
+		cout << "WSAStartup failed with error : " << nInitCode << endl;
+		return;
+	}
+
+	PTP_WAIT psoWait = NULL;
+	IOCP_ENV ie;
+	InitializeCriticalSection(&ie._cs);
+	try
+	{
+		ie._listen = GetListenSocket(9000);
+		if (ie._listen == INVALID_SOCKET)
+			throw WSAGetLastError();
+		cout << " ==> Waiting for client's connection......" << endl;
+
+		psoWait = CreateThreadpoolWait(Handler_SockListen, &ie, NULL);
+		//PTP_WAIT 객체를 생성한다. 매개변수로 IOCP_ENV 포인터를 전달한다.
+		if (psoWait == NULL)
+			throw (int)GetLastError();
+
+		ie._event = WSACreateEvent();
+		if (ie._event == NULL)
+			throw WSAGetLastError();
+		SetThreadpoolWait(psoWait, ie._event, NULL);
+		//이벤트의 시그널 상태를 잡기 위해 리슨용 이벤트를 생성하고 PTP_WAIT 객체와 연결한다.
+		WSAEventSelect(ie._listen, ie._event, FD_ACCEPT);
+
+		getchar();
+		//종료를 위해 키 입력을 대기한다.
+	}
+	catch (int ex)
+	{
+		cout << "Error occurred in main, " << ex << endl;
+	}
+
+	if (ie._listen != INVALID_SOCKET)
+		closesocket(ie._listen);
+	if (psoWait != NULL)
+	{
+		WaitForThreadpoolWaitCallbacks(psoWait, TRUE);
+		CloseThreadpoolWait(psoWait);
+		//접속 수용 콜백 함수의 실행 완료를 대기하고 TP_WAIT 객체를 해제한다.
+	}
+	if (ie._event != NULL)
+		CloseHandle(ie._event);
+
+	for (SOCK_SET::iterator it = ie._conn.begin(); it != ie._conn.end(); it++)
+	{
+		PSOCK_ITEM psi = *it;
+		CancelIoEx((HANDLE)psi->_sock, NULL);
+		WaitForThreadpoolIoCallbacks(psi->_ptpIo, TRUE);
+		//연결된 자식 소켓 해제를 위해 우선 대기 중인 입출력을 취소하고, 콜백 항목의 취소 및 완료를 기다린다.
+		closesocket(psi->_sock);
+		CloseThreadpoolIo(psi->_ptpIo);
+		//자식 소켓, TP_IO 객체 및 관련 리소스를 해제한다.
+		delete psi;
+	}
+	DeleteCriticalSection(&ie._cs);
+
+	cout << "==== Server terminates... ==========================" << endl;
+	WSACleanup();
 }

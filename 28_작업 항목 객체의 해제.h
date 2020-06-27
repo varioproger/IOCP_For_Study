@@ -1,5 +1,6 @@
 /*
 CreateThreadpoolXxx를 통해서 생성된 작업 항목의 리소스를 제거하고자 할 때에는 다음의 함수를 사용한다.
+
 VOID WINAPI CloseThreadpoolXxx(_Inout_ PTP_XXX pwa);
 
 paw 매개변수는 당연히 CreateThreadpoolXxx의 리턴값인 TP _XXX 객체의 포인터다.
